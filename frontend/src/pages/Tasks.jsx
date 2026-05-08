@@ -3,6 +3,35 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 import './Tasks.css';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+
+const glassSelectStyles = {
+    menuPortal: base => ({ ...base, zIndex: 9999 }),
+    control: base => ({
+        ...base,
+        background: 'rgba(0, 0, 0, 0.2)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        color: 'white',
+        boxShadow: 'none',
+        minHeight: '42px'
+    }),
+    singleValue: base => ({ ...base, color: 'white' }),
+    multiValue: base => ({ ...base, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '4px' }),
+    multiValueLabel: base => ({ ...base, color: 'white' }),
+    multiValueRemove: base => ({ ...base, color: 'white', ':hover': { backgroundColor: 'rgba(220, 53, 69, 0.5)' } }),
+    menu: base => ({
+        ...base,
+        background: '#0f172a',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+    }),
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isFocused ? 'rgba(255,255,255,0.1)' : 'transparent',
+        color: 'white',
+        cursor: 'pointer'
+    })
+};
 
 export default function Tasks({ auth, setAuth }) {
     const [tasks, setTasks] = useState([]);
@@ -49,9 +78,65 @@ export default function Tasks({ auth, setAuth }) {
         }
     };
 
+    const changeDeadline = async (taskId, newDate) => {
+        if (!newDate) return;
+        const formattedDate = newDate.length === 16 ? newDate + ':00' : newDate;
+        try {
+            await axios.patch(`http://localhost:8080/api/tasks/${taskId}/deadline?dueDate=${formattedDate}`, null, {
+                headers: { 'Authorization': auth }
+            });
+            fetchData(false);
+            setSelectedTask(prev => prev ? { ...prev, dueDate: formattedDate } : null);
+        } catch (err) {
+            console.error('Ошибка:', err);
+            alert('Не удалось изменить дедлайн');
+        }
+    };
+
     useEffect(() => {
-        fetchData();
+        fetchData(true);
+
+        const socket = new SockJS('http://localhost:8080/ws');
+        const stompClient = new Client({
+            webSocketFactory: () => socket,
+            onConnect: () => {
+                stompClient.subscribe('/topic/tasks', (message) => {
+                    fetchData(false);
+                });
+            }
+        });
+        stompClient.activate();
+
+        return () => {
+            stompClient.deactivate();
+        };
     }, [auth]);
+
+    useEffect(() => {
+        const timeoutIds =[];
+
+        tasks.forEach(task => {
+            if (task.dueDate && task.status !== 'DONE') {
+                const dueTime = new Date(task.dueDate).getTime();
+                const timeToDeadline = dueTime - Date.now();
+
+                const MAX_TIMEOUT = 2147483647;
+
+                if (timeToDeadline > 0 && timeToDeadline <= MAX_TIMEOUT) {
+                    const timeoutId = setTimeout(() => {
+                        console.log(`Дедлайн задачи #${task.id} наступил!`);
+                        setTasks(prevTasks => [...prevTasks]);
+                    }, timeToDeadline);
+
+                    timeoutIds.push(timeoutId);
+                }
+            }
+        });
+
+        return () => {
+            timeoutIds.forEach(id => clearTimeout(id));
+        };
+    }, [tasks]);
 
     const toggleSubtask = async (taskId, subtaskId) => {
         try {
@@ -61,7 +146,11 @@ export default function Tasks({ auth, setAuth }) {
             }));
             fetchData();
         } catch (err) {
-            console.error('Ошибка при изменении подзадачи:', err);
+            if (err.response?.status === 403) {
+                alert('У вас нет прав! Отмечать чек-лист может только создатель или исполнитель задачи.');
+            } else {
+                console.error('Ошибка при обновлении подзадачи:', err);
+            }
         }
     };
 
@@ -155,6 +244,11 @@ export default function Tasks({ auth, setAuth }) {
         }
     };
 
+    const isOverdue = (task) => {
+        if (!task.dueDate || task.status === 'DONE') return false;
+        return new Date(task.dueDate) < new Date();
+    };
+
     const filteredTasks = tasks.filter(task => {
         if (filter !== 'ALL' && task.type !== filter) return false;
         if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -232,6 +326,8 @@ export default function Tasks({ auth, setAuth }) {
                                 options={userOptions}
                                 placeholder="Выберите исполнителей..."
                                 noOptionsMessage={() => "Сотрудники не найдены"}
+                                styles={glassSelectStyles}
+                                menuPortalTarget={document.body}
                                 onChange={(selectedOptions) => {
                                     const ids = selectedOptions ? selectedOptions.map(opt => opt.value) :[];
                                     setNewTask({ ...newTask, assigneeIds: ids });
@@ -286,20 +382,30 @@ export default function Tasks({ auth, setAuth }) {
                             </tr>
                         ) : (
                             filteredTasks.map(t => {
-                                const currentAssignees = t.assignees?.map(a => ({ value: a.id, label: a.username })) || [];
+                                const currentAssignees = t.assignees?.map(a => ({ value: a.id, label: a.username })) ||[];
+                                const overdue = isOverdue(t);
+
+                                const isReporter = t.reporter?.id === userId;
+                                const lockedForMe = overdue && !isReporter;
 
                                 return (
-                                    <tr key={t.id} className="task-row">
+                                    <tr key={t.id} className={`task-row ${overdue ? 'overdue-row' : ''}`}>
                                         <td data-label="ID"><span className="task-id">#{t.id}</span></td>
                                         <td data-label="Тип">
-                    <span className="task-type" title={t.type}>
-                        {getTypeIcon(t.type)} {t.type}
-                    </span>
+                                            <span className="task-type" title={t.type}>
+                                                {getTypeIcon(t.type)} {t.type}
+                                            </span>
                                         </td>
                                         <td data-label="Название">
-                                            <strong>{t.title}</strong><br/>
-                                            <small className="task-description" style={{color: '#6c757d'}}>
-                                                📆 Дедлайн: {t.dueDate ? new Date(t.dueDate).toLocaleString() : 'Нет'}
+                                            <strong>{t.title}</strong>
+                                            {overdue && <span className="overdue-badge">🔥 ПРОСРОЧЕНО</span>}
+                                            {lockedForMe && <span className="badge bg-secondary ms-2" style={{fontSize: '10px'}}>🔒 ЗАБЛОКИРОВАНО</span>}
+                                            <br/>
+                                            <small className="task-description" style={{color: '#6c757d', marginTop: '5px'}}>
+                                                👤 Автор: <strong style={{color: '#fff'}}>{t.reporter?.username || 'Неизвестен'}</strong> <br/>
+                                                📆 Дедлайн: <span style={{ color: overdue ? '#fca5a5' : 'inherit' }}>
+                                                    {t.dueDate ? new Date(t.dueDate).toLocaleString() : 'Нет'}
+                                                </span>
                                             </small>
                                         </td>
                                         <td data-label="Исполнители" style={{ minWidth: '250px' }}>
@@ -309,7 +415,8 @@ export default function Tasks({ auth, setAuth }) {
                                                 value={currentAssignees}
                                                 placeholder="Не назначено"
                                                 menuPortalTarget={document.body}
-                                                styles={{ menuPortal: base => ({ ...base, zIndex: 9999 }) }}
+                                                styles={glassSelectStyles}
+                                                isDisabled={!isReporter}
                                                 onChange={(selectedOptions) => {
                                                     const ids = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
                                                     updateAssignees(t.id, ids);

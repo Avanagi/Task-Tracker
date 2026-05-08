@@ -1,15 +1,49 @@
+/* =========================================
+   GLASSMORPHISM 4K UI - DARK PURPLE/BLUE
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+    background-color: #0b0c10;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    color: #e9ecef;
+}
+
+/* Главный фон: Темный градиент Фиолетовый -> Синий */
 .tasks-container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    padding: 20px;
+    background: radial-gradient(circle at 15% 50%, #2a0a5e, #0f172a 40%, #0a192f 80%, #020c1b 100%);
+    background-size: 200% 200%;
+    animation: gradientMove 15s ease infinite;
+    padding: 30px 20px;
+    color: #f8f9fa;
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* =========================================
+   СТЕКЛЯННЫЕ ПАНЕЛИ (FROSTED GLASS)
+   ========================================= */
+.header-card, .actions-bar, .form-card, .tasks-table-container, .modal-content {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.15); /* Блик на верхней грани */
+    border-left: 1px solid rgba(255, 255, 255, 0.15); /* Блик на левой грани */
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.02);
 }
 
 .header-card {
-    background: white;
-    border-radius: 15px;
-    padding: 20px 30px;
+    padding: 25px 35px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
 .header-content {
@@ -21,34 +55,71 @@
 .welcome-title {
     margin: 0;
     font-size: 28px;
-    color: #333;
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
 }
 
 .welcome-subtitle {
     margin: 5px 0 0;
-    color: #666;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 300;
 }
 
-.logout-btn {
-    background: #dc3545;
-    color: white;
-    border: none;
-    padding: 10px 20px;
+/* =========================================
+   КНОПКИ
+   ========================================= */
+.logout-btn, .create-task-btn, .submit-btn, .action-btn, .btn-secondary, .close-modal-btn {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.logout-btn:hover {
-    background: #c82333;
+.logout-btn { padding: 10px 20px; font-weight: 500; }
+.logout-btn:hover { background: rgba(220, 53, 69, 0.4); border-color: rgba(220, 53, 69, 0.6); box-shadow: 0 0 15px rgba(220, 53, 69, 0.4); }
+
+.create-task-btn, .submit-btn {
+    padding: 12px 24px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 8px;
+
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.create-task-btn:hover, .submit-btn:hover:not(:disabled) {
     transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
+.submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* =========================================
+   ФИЛЬТРЫ И ИНПУТЫ
+   ========================================= */
 .actions-bar {
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
+    padding: 20px 25px;
     margin-bottom: 30px;
     display: flex;
     justify-content: space-between;
@@ -57,260 +128,352 @@
     gap: 20px;
 }
 
-.create-task-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
+.filters { display: flex; gap: 20px; align-items: center; }
+
+.search-input, .form-input, .form-select, .form-textarea {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
     border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
+    padding: 10px 15px;
     transition: all 0.3s;
 }
 
-.create-task-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+.search-input { width: 280px; }
+
+.search-input::placeholder, .form-input::placeholder, .form-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
 }
 
-.filters {
-    display: flex;
-    gap: 15px;
-    align-items: center;
+.search-input:focus, .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
-.search-input {
-    padding: 8px 12px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 14px;
-    width: 250px;
+select.form-select option, select.status-select option {
+    background: #0f172a;
+    color: #fff;
 }
 
-.filter-buttons {
-    display: flex;
-    gap: 10px;
-}
+.filter-buttons { display: flex; gap: 10px; }
 
 .filter-btn {
-    padding: 8px 16px;
-    background-color: #ffffff;
-    border: 2px solid #e0e0e0;
+    padding: 8px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    color: lightblue;
-    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s;
-}
-
-.filter-btn.active {
-    background-color: #0d6efd;
-    color: white;
-    border-color: #0d6efd;
 }
 
 .filter-btn:hover {
-    border-color: #0d6efd;
-    background-color: #f0f7ff;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
 }
 
+.filter-btn.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.15);
+}
+
+/* =========================================
+   ФОРМА
+   ========================================= */
 .form-card {
-    background: white;
-    border-radius: 15px;
     padding: 30px;
     margin-bottom: 30px;
-    animation: slideDown 0.3s ease-out;
+    animation: fadeIn 0.4s ease-out;
 }
 
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+.form-title {
+    margin: 0 0 20px 0;
+    color: #fff;
+    font-weight: 500;
 }
 
-.form-input, .form-select, .form-textarea {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
     font-size: 14px;
 }
 
+/* =========================================
+   ТАБЛИЦА
+   ========================================= */
 .tasks-table-container {
-    background: white;
-    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .tasks-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
+    background: transparent;
 }
 
 .tasks-table thead {
-    background: #f8f9fa;
-    border-bottom: 2px solid #e9ecef;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .tasks-table th {
-    padding: 14px 12px;
+    padding: 16px;
     text-align: left;
     font-weight: 600;
-    color: #495057;
+    color: rgba(255, 255, 255, 0.9);
     font-size: 13px;
     text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .tasks-table td {
-    padding: 12px;
-    border-bottom: 1px solid #f1f3f5;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    vertical-align: middle;
 }
 
 .task-row:hover {
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.03);
 }
 
-.status-select {
-    padding: 5px 10px;
+.task-id {
+    font-family: 'Courier New', monospace;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px 8px;
     border-radius: 6px;
-    border: 1px solid #dee2e6;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
+    font-size: 13px;
 }
 
-.status-warning { background-color: #fff3cd; color: #856404; }
-.status-info { background-color: #cff4fc; color: #055160; }
-.status-warning-review { background-color: #ffeeba; color: #856404; }
-.status-success { background-color: #d1e7dd; color: #0f5132; }
-
-.action-buttons {
-    display: flex;
+.task-type {
+    display: inline-flex;
+    align-items: center;
     gap: 6px;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-size: 12px;
+    color: #fff;
 }
+
+.task-description {
+    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 12px;
+    margin-top: 6px;
+    display: block;
+}
+
+/* =========================================
+   СТАТУСЫ С НЕОНОВЫМ СВЕЧЕНИЕМ
+   ========================================= */
+.status-select {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.status-warning { color: #fde047; border-color: rgba(253, 224, 71, 0.3); text-shadow: 0 0 8px rgba(253, 224, 71, 0.4); }
+.status-info { color: #7dd3fc; border-color: rgba(125, 211, 252, 0.3); text-shadow: 0 0 8px rgba(125, 211, 252, 0.4); }
+.status-warning-review { color: #fca5a5; border-color: rgba(252, 165, 165, 0.3); text-shadow: 0 0 8px rgba(252, 165, 165, 0.4); }
+.status-success { color: #8ce99a; border-color: rgba(140, 233, 154, 0.3); text-shadow: 0 0 8px rgba(140, 233, 154, 0.4); }
+
+.status-select:focus { box-shadow: 0 0 10px rgba(255,255,255,0.1); }
+
+/* =========================================
+   ДЕЙСТВИЯ (КНОПКИ ТАБЛИЦЫ)
+   ========================================= */
+.action-buttons { display: flex; gap: 8px; }
 
 .action-btn {
-    width: 30px;
-    height: 30px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+    width: 34px; height: 34px;
+    display: flex; justify-content: center; align-items: center;
 }
 
+.view-btn:hover { background: rgba(56, 189, 248, 0.3); border-color: rgba(56, 189, 248, 0.5); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+.delete-btn:hover { background: rgba(248, 113, 113, 0.3); border-color: rgba(248, 113, 113, 0.5); box-shadow: 0 0 10px rgba(248, 113, 113, 0.3); }
+
+/* =========================================
+   МОДАЛЬНОЕ ОКНО
+   ========================================= */
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px); /* Задний фон размыт */
+    display: flex; justify-content: center; align-items: center;
     z-index: 1000;
 }
 
 .modal-content {
-    background: white;
     padding: 30px;
-    border-radius: 15px;
-    width: 500px;
+    width: 550px;
     max-width: 90%;
-    position: relative;
+    max-height: 85vh;
+    overflow-y: auto;
 }
+
+.modal-content::-webkit-scrollbar { width: 8px; }
+.modal-content::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
+.modal-content::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
 .modal-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 15px;
 }
+
+.modal-header h3 { margin: 0; color: #fff; font-weight: 600; text-shadow: 0 0 10px rgba(255,255,255,0.2); }
 
 .modal-close {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 20px;
+    background: none; border: none; color: rgba(255, 255, 255, 0.5);
+    font-size: 20px; cursor: pointer; transition: color 0.2s;
 }
+.modal-close:hover { color: #fff; text-shadow: 0 0 10px #fff; }
 
-.subtask-list {
-    list-style: none;
-    padding: 0;
-}
+.modal-body p { color: rgba(255, 255, 255, 0.8); line-height: 1.6; }
 
+.subtask-list { list-style: none; padding: 0; margin: 0; }
 .subtask-item {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex; align-items: center;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.subtask-checkbox {
+    accent-color: #8a2be2;
+    width: 16px; height: 16px;
+    cursor: pointer;
 }
 
 .completed {
     text-decoration: line-through;
-    color: #999;
+    color: rgba(255, 255, 255, 0.3);
 }
 
-.assignee-select {
-    width: 100%;
-    padding: 6px;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
-}
+.empty-state { text-align: center; padding: 60px 20px; }
+.empty-emoji { font-size: 60px; opacity: 0.3; margin-bottom: 15px; filter: drop-shadow(0 0 20px rgba(255,255,255,0.2)); }
+.empty-state p { color: rgba(255, 255, 255, 0.6); }
 
+
+/* =========================================
+   АДАПТИВНОСТЬ
+   ========================================= */
 @media (max-width: 992px) {
-    .actions-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .filters {
-        flex-direction: column;
-        width: 100%;
-        gap: 10px;
-    }
-
-    .search-input {
-        width: 100%;
-    }
-
-    .filter-buttons {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
+    .actions-bar { flex-direction: column; align-items: stretch; }
+    .filters { flex-direction: column; width: 100%; gap: 15px; }
+    .search-input { width: 100%; }
+    .filter-buttons { flex-wrap: wrap; justify-content: center; }
 }
 
 @media (max-width: 768px) {
-    .tasks-table-container {
-        border-radius: 0;
-    }
-
-    .tasks-table thead {
-        display: none;
-    }
-
-    .tasks-table, .tasks-table tbody, .tasks-table tr, .tasks-table td {
-        display: block;
-        width: 100%;
-    }
-
+    .tasks-table-container { border-radius: 0; background: transparent; border: none; box-shadow: none; }
+    .tasks-table thead { display: none; }
+    .tasks-table, .tasks-table tbody, .tasks-table tr, .tasks-table td { display: block; width: 100%; }
     .task-row {
-        margin-bottom: 15px;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
+        margin-bottom: 20px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
         padding: 10px;
+        backdrop-filter: blur(10px);
     }
-
     .task-row td {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #eee;
-        padding: 8px 0;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 12px 5px;
     }
+    .task-row td:last-child { border-bottom: none; }
+    .task-row td:before { content: attr(data-label); font-weight: 600; color: rgba(255, 255, 255, 0.5); }
+}
 
-    .task-row td:before {
-        content: attr(data-label);
-        font-weight: bold;
-        color: #666;
-    }
+
+/* --- СТИЛИ ДЛЯ ПОДСКАЗКИ ПРИ РЕГИСТРАЦИИ (TOOLTIP) --- */
+.info-tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.info-icon {
+    background: rgba(255, 255, 255, 0.1);
+    color: #7dd3fc;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: help;
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    font-size: 14px;
+}
+
+.tooltip-text {
+    position: absolute;
+    bottom: 130%;
+    left: 0;
+
+    background: rgba(10, 15, 30, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    border-left: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+
+    padding: 15px;
+    border-radius: 12px;
+    width: 250px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(10px);
+    z-index: 100;
+}
+
+.info-tooltip-container:hover .tooltip-text {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* --- СТИЛИ ДЛЯ ПРОСРОЧЕННЫХ ЗАДАЧ --- */
+.overdue-row {
+    background: rgba(220, 53, 69, 0.08) !important;
+    border: 1px solid rgba(220, 53, 69, 0.3) !important;
+}
+
+.overdue-badge {
+    background: rgba(220, 53, 69, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-left: 8px;
+    font-weight: 600;
+    text-shadow: 0 0 5px rgba(220, 53, 69, 0.5);
+    animation: pulseRed 2s infinite;
+}
+
+@keyframes pulseRed {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
 }

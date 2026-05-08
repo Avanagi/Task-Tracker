@@ -19,7 +19,7 @@ public interface TaskService {
     AbstractTask assignUser(Long taskId, Long userId, String currentUsername);
 
     @Transactional
-    AbstractTask toggleSubtask(Long taskId, Long subtaskId);
+    public AbstractTask toggleSubtask(Long taskId, Long subtaskId, String currentUsername);
 
     @Transactional
     AbstractTask assignBulk(Long id, List<Long> userIds, String name);
@@ -29,4 +29,7 @@ public interface TaskService {
 
     @Transactional
     List<AbstractTask> getAllTasks();
+
+    @Transactional
+    AbstractTask updateDeadline(Long taskId, String dueDateStr, String currentUsername);
 }

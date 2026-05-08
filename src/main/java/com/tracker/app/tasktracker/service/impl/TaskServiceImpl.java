@@ -2,6 +2,7 @@ package com.tracker.app.tasktracker.service.impl;
 
 import com.tracker.app.tasktracker.dto.TaskCreateDto;
 import com.tracker.app.tasktracker.event.TaskCreatedEvent;
+import com.tracker.app.tasktracker.event.TaskDeletedEvent;
 import com.tracker.app.tasktracker.event.TaskStatusChangedEvent;
 import com.tracker.app.tasktracker.exception.InvalidTaskOperationException;
 import com.tracker.app.tasktracker.exception.SubtaskNotFoundException;
@@ -68,6 +69,14 @@ public class TaskServiceImpl implements TaskService {
 
         boolean isReporter = task.getReporter().getId().equals(currentUser.getId());
         boolean isAssignee = task.getAssignees().stream().anyMatch(a -> a.getId().equals(currentUser.getId()));
+
+        boolean isOverdue = task.getDueDate() != null
+                && task.getDueDate().isBefore(java.time.LocalDateTime.now())
+                && task.getStatus() != TaskStatus.DONE;
+
+        if (isOverdue && !isReporter) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task's time exceeded.");
+        }
 
         if (!isReporter && !isAssignee) {
             log.warn("Access denied. User {} tried to change status of task {}", currentUsername, taskId);
@@ -150,14 +159,24 @@ public class TaskServiceImpl implements TaskService {
 
         taskRepository.deleteById(taskId);
         log.info("Task ID: {} deleted successfully", taskId);
+        eventPublisher.publishEvent(new TaskDeletedEvent(this, taskId));
     }
 
     @Override
     @Transactional
-    public AbstractTask toggleSubtask(Long taskId, Long subtaskId) {
-        log.debug("Toggling subtask ID: {} for task ID: {}", subtaskId, taskId);
+    public AbstractTask toggleSubtask(Long taskId, Long subtaskId, String currentUsername) {
+        log.debug("Toggling subtask ID: {} for task ID: {} by user: {}", subtaskId, taskId, currentUsername);
 
         AbstractTask task = getTaskById(taskId);
+        User currentUser = getCurrentUser(currentUsername);
+
+        boolean isReporter = task.getReporter().getId().equals(currentUser.getId());
+        boolean isAssignee = task.getAssignees().stream().anyMatch(a -> a.getId().equals(currentUser.getId()));
+
+        if (!isReporter && !isAssignee) {
+            log.warn("Access denied. User {} tried to toggle subtask of epic {}", currentUsername, taskId);
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author and assignees can toggle subtasks");
+        }
 
         if (!(task instanceof EpicTask epic)) {
             log.error("Invalid operation - Task ID: {} is not an EpicTask", taskId);
@@ -173,6 +192,23 @@ public class TaskServiceImpl implements TaskService {
         log.info("Subtask toggled - Epic ID: {}, Subtask ID: {}, New status: {}", taskId, subtaskId, subtask.isCompleted());
 
         return taskRepository.save(epic);
+    }
+
+    @Transactional
+    public AbstractTask updateDeadline(Long taskId, String dueDateStr, String currentUsername) {
+        log.debug("Updating deadline for task {} by user {}", taskId, currentUsername);
+        AbstractTask task = getTaskById(taskId);
+        User currentUser = getCurrentUser(currentUsername);
+
+        if (!task.getReporter().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can change deadline!");
+        }
+
+        task.setDueDate(java.time.LocalDateTime.parse(dueDateStr));
+        AbstractTask updatedTask = taskRepository.save(task);
+
+        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
+        return updatedTask;
     }
 
     @Transactional

@@ -53,9 +53,15 @@ public class TaskController {
     }
 
     @PatchMapping("/{taskId}/subtasks/{subtaskId}/toggle")
-    public ResponseEntity<AbstractTask> toggleSubtask(@PathVariable Long taskId, @PathVariable Long subtaskId) {
-        log.info("Received request to toggle subtask {} for task {}", subtaskId, taskId);
-        return ResponseEntity.ok(taskService.toggleSubtask(taskId, subtaskId));
+    public ResponseEntity<AbstractTask> toggleSubtask(@PathVariable Long taskId, @PathVariable Long subtaskId, Principal principal) {
+        log.info("Received request to toggle subtask {} for task {} by user {}", subtaskId, taskId, principal.getName());
+        return ResponseEntity.ok(taskService.toggleSubtask(taskId, subtaskId, principal.getName()));
+    }
+
+    @PatchMapping("/{id}/deadline")
+    public ResponseEntity<AbstractTask> updateDeadline(@PathVariable Long id, @RequestParam String dueDate, Principal principal) {
+        log.info("Received request to update deadline for task {} by: {}", id, principal.getName());
+        return ResponseEntity.ok(taskService.updateDeadline(id, dueDate, principal.getName()));
     }
 
     @DeleteMapping("/{id}")
