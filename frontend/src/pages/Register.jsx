@@ -5,10 +5,10 @@ import './Tasks.css';
 import './Auth.css';
 
 export default function Register({ setAuth }) {
-    const[formData, setFormData] = useState({ username: '', email: '', password: '' });
-    const[globalError, setGlobalError] = useState('');
-    const [fieldErrors, setFieldErrors] = useState({});
-    const[loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+    const [globalError, setGlobalError] = useState('');
+    const[fieldErrors, setFieldErrors] = useState({});
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleRegister = async (e) => {
@@ -19,7 +19,6 @@ export default function Register({ setAuth }) {
 
         try {
             await axios.post('http://localhost:8080/api/auth/register', formData);
-
             const token = 'Basic ' + btoa(formData.username + ':' + formData.password);
             const response = await axios.get('http://localhost:8080/api/auth/me', {
                 headers: { 'Authorization': token }
@@ -31,24 +30,11 @@ export default function Register({ setAuth }) {
             setAuth(token);
             navigate('/tasks');
         } catch (error) {
-            console.error('Детали ошибки регистрации:', error);
-
-            if (error.response) {
+            if (error.response?.data) {
                 const data = error.response.data;
-
-                if (typeof data === 'object' && Object.keys(data).length > 0 && !data.message) {
-                    setFieldErrors(data);
-                } else if (data.message) {
-                    setGlobalError(data.message);
-                } else if (typeof data === 'string' && data.trim() !== '') {
-                    setGlobalError(data);
-                } else {
-                    setGlobalError('Введены некорректные данные. Проверьте правильность заполнения.');
-                }
-            } else if (error.request) {
-                setGlobalError('Сервер недоступен.');
+                typeof data === 'object' && !data.message ? setFieldErrors(data) : setGlobalError(data.message || 'Ошибка');
             } else {
-                setGlobalError('Произошла ошибка при отправке запроса.');
+                setGlobalError('Сервер недоступен.');
             }
         } finally {
             setLoading(false);
@@ -67,34 +53,17 @@ export default function Register({ setAuth }) {
 
                 <form onSubmit={handleRegister}>
                     <div className="auth-input-group">
-                        <input
-                            className={`form-input ${fieldErrors.username ? 'input-error' : ''}`}
-                            placeholder="Логин"
-                            onChange={e => setFormData({ ...formData, username: e.target.value })}
-                            required
-                        />
+                        <input className={`form-input ${fieldErrors.username ? 'input-error' : ''}`} placeholder="Логин" onChange={e => setFormData({ ...formData, username: e.target.value })} required />
                         {fieldErrors.username && <div className="field-error-text">{fieldErrors.username}</div>}
                     </div>
 
                     <div className="auth-input-group">
-                        <input
-                            className={`form-input ${fieldErrors.email ? 'input-error' : ''}`}
-                            type="email"
-                            placeholder="Email"
-                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            required
-                        />
+                        <input className={`form-input ${fieldErrors.email ? 'input-error' : ''}`} type="email" placeholder="Email" onChange={e => setFormData({ ...formData, email: e.target.value })} required />
                         {fieldErrors.email && <div className="field-error-text">{fieldErrors.email}</div>}
                     </div>
 
                     <div className="auth-input-group-last">
-                        <input
-                            className={`form-input ${fieldErrors.password ? 'input-error' : ''}`}
-                            type="password"
-                            placeholder="Пароль"
-                            onChange={e => setFormData({ ...formData, password: e.target.value })}
-                            required
-                        />
+                        <input className={`form-input ${fieldErrors.password ? 'input-error' : ''}`} type="password" placeholder="Пароль" onChange={e => setFormData({ ...formData, password: e.target.value })} required />
 
                         <div className="info-tooltip-container mt-2">
                             <span className="info-icon">ℹ️</span>
@@ -124,14 +93,12 @@ export default function Register({ setAuth }) {
                     </div>
 
                     <button className="submit-btn full-width-btn" type="submit" disabled={loading}>
-                        {loading ? 'Создание аккаунта...' : 'Создать аккаунт'}
+                        {loading ? 'Создание...' : 'Создать аккаунт'}
                     </button>
                 </form>
 
                 <div className="mt-4 text-center">
-                    <Link to="/login" className="auth-link">
-                        Уже есть аккаунт? Войти
-                    </Link>
+                    <Link to="/login" className="auth-link">Уже есть аккаунт? Войти</Link>
                 </div>
             </div>
         </div>

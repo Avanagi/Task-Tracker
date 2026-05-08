@@ -57,8 +57,8 @@ export default function Tasks({ auth, setAuth }) {
         reporterId: userId
     });
 
-    const fetchData = async () => {
-        setLoading(true);
+    const fetchData = async (showSpinner = true) => {
+        if (showSpinner) setLoading(true);
         try {
             const [tRes, uRes] = await Promise.all([
                 axios.get('http://localhost:8080/api/tasks', { headers: { 'Authorization': auth } }),
@@ -74,7 +74,7 @@ export default function Tasks({ auth, setAuth }) {
                 navigate('/login');
             }
         } finally {
-            setLoading(false);
+            if (showSpinner) setLoading(false);
         }
     };
 
@@ -86,10 +86,10 @@ export default function Tasks({ auth, setAuth }) {
                 headers: { 'Authorization': auth }
             });
             fetchData(false);
-            setSelectedTask(prev => prev ? { ...prev, dueDate: formattedDate } : null);
+            setSelectedTask(prev => prev && prev.id === taskId ? { ...prev, dueDate: formattedDate } : prev);
         } catch (err) {
             console.error('Ошибка:', err);
-            alert('Не удалось изменить дедлайн');
+            alert('Не удалось изменить дедлайн. У вас нет прав.');
         }
     };
 
@@ -119,7 +119,6 @@ export default function Tasks({ auth, setAuth }) {
             if (task.dueDate && task.status !== 'DONE') {
                 const dueTime = new Date(task.dueDate).getTime();
                 const timeToDeadline = dueTime - Date.now();
-
                 const MAX_TIMEOUT = 2147483647;
 
                 if (timeToDeadline > 0 && timeToDeadline <= MAX_TIMEOUT) {
@@ -144,7 +143,7 @@ export default function Tasks({ auth, setAuth }) {
             setSelectedTask(prev => ({
                 ...prev, subtasks: prev.subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s)
             }));
-            fetchData();
+            fetchData(false);
         } catch (err) {
             if (err.response?.status === 403) {
                 alert('У вас нет прав! Отмечать чек-лист может только создатель или исполнитель задачи.');
@@ -171,7 +170,7 @@ export default function Tasks({ auth, setAuth }) {
                 type: 'TASK', title: '', description: '', dueDate: '',
                 stepsToReproduce: '', subtaskTitles: '', assigneeIds:[], reporterId: userId
             });
-            fetchData();
+            fetchData(false);
         } catch (err) {
             console.error('Ошибка при создании задачи:', err);
             alert('Не удалось создать задачу. Подробности в консоли.');
@@ -183,14 +182,14 @@ export default function Tasks({ auth, setAuth }) {
     const changeStatus = async (id, newStatus) => {
         try {
             await axios.patch(`http://localhost:8080/api/tasks/${id}/status?status=${newStatus}`, null, { headers: { 'Authorization': auth } });
-            fetchData();
+            fetchData(false);
         } catch (err) {
             if (err.response?.status === 403) {
-                alert('У вас нет прав! Только автор или исполнитель могут менять статус.');
+                alert('У вас нет прав или задача просрочена! Редактировать просроченную задачу может только создатель.');
             } else {
                 console.error('Ошибка:', err);
             }
-            fetchData();
+            fetchData(false);
         }
     };
 
@@ -198,14 +197,14 @@ export default function Tasks({ auth, setAuth }) {
         try {
             const idsParam = userIds.length > 0 ? userIds.join(',') : '';
             await axios.patch(`http://localhost:8080/api/tasks/${taskId}/assign-bulk?userIds=${idsParam}`, null, { headers: { 'Authorization': auth } });
-            fetchData();
+            fetchData(false);
         } catch (err) {
             if (err.response?.status === 403) {
                 alert('У вас нет прав! Только автор задачи может изменять исполнителей.');
             } else {
                 console.error('Ошибка:', err);
             }
-            fetchData();
+            fetchData(false);
         }
     };
 
@@ -214,11 +213,11 @@ export default function Tasks({ auth, setAuth }) {
             setLoading(true);
             try {
                 await axios.delete(`http://localhost:8080/api/tasks/${id}`, { headers: { 'Authorization': auth } });
-                fetchData();
+                fetchData(false);
                 setSelectedTask(null);
             } catch (err) {
                 console.error('Ошибка при удалении задачи:', err);
-                alert('Не удалось удалить задачу');
+                alert('Не удалось удалить задачу (Возможно, нет прав)');
             } finally {
                 setLoading(false);
             }
@@ -256,6 +255,9 @@ export default function Tasks({ auth, setAuth }) {
     });
 
     const userOptions = users.map(u => ({ value: u.id, label: u.username }));
+
+    const isReporterModal = selectedTask ? String(selectedTask.reporter?.id) === String(userId) : false;
+    const lockedModal = selectedTask ? (isOverdue(selectedTask) && !isReporterModal) : false;
 
     return (
         <div className="tasks-container">
@@ -385,29 +387,51 @@ export default function Tasks({ auth, setAuth }) {
                                 const currentAssignees = t.assignees?.map(a => ({ value: a.id, label: a.username })) ||[];
                                 const overdue = isOverdue(t);
 
-                                const isReporter = t.reporter?.id === userId;
+                                const isReporter = String(t.reporter?.id) === String(userId);
                                 const lockedForMe = overdue && !isReporter;
 
                                 return (
                                     <tr key={t.id} className={`task-row ${overdue ? 'overdue-row' : ''}`}>
                                         <td data-label="ID"><span className="task-id">#{t.id}</span></td>
+
                                         <td data-label="Тип">
                                             <span className="task-type" title={t.type}>
                                                 {getTypeIcon(t.type)} {t.type}
                                             </span>
                                         </td>
+
                                         <td data-label="Название">
                                             <strong>{t.title}</strong>
                                             {overdue && <span className="overdue-badge">🔥 ПРОСРОЧЕНО</span>}
-                                            {lockedForMe && <span className="badge bg-secondary ms-2" style={{fontSize: '10px'}}>🔒 ЗАБЛОКИРОВАНО</span>}
+                                            {lockedForMe && <span className="badge bg-secondary ms-2" style={{fontSize: '10px', padding: '3px 6px', borderRadius: '4px'}}>🔒 ЗАБЛОКИРОВАНО</span>}
                                             <br/>
+
                                             <small className="task-description" style={{color: '#6c757d', marginTop: '5px'}}>
                                                 👤 Автор: <strong style={{color: '#fff'}}>{t.reporter?.username || 'Неизвестен'}</strong> <br/>
-                                                📆 Дедлайн: <span style={{ color: overdue ? '#fca5a5' : 'inherit' }}>
-                                                    {t.dueDate ? new Date(t.dueDate).toLocaleString() : 'Нет'}
-                                                </span>
+                                                📆 Дедлайн:
+
+                                                {isReporter ? (
+                                                    <input
+                                                        type="datetime-local"
+                                                        style={{
+                                                            background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.2)',
+                                                            borderRadius: '4px', padding: '2px 5px', marginLeft: '5px', fontSize: '11px'
+                                                        }}
+                                                        defaultValue={t.dueDate ? t.dueDate.substring(0, 16) : ''}
+                                                        onBlur={(e) => {
+                                                            if (e.target.value && e.target.value + ':00' !== t.dueDate) {
+                                                                changeDeadline(t.id, e.target.value);
+                                                            }
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <span style={{ color: overdue ? '#fca5a5' : 'inherit', marginLeft: '5px' }}>
+                                                        {t.dueDate ? new Date(t.dueDate).toLocaleString() : 'Нет'}
+                                                    </span>
+                                                )}
                                             </small>
                                         </td>
+
                                         <td data-label="Исполнители" style={{ minWidth: '250px' }}>
                                             <Select
                                                 isMulti
@@ -427,6 +451,7 @@ export default function Tasks({ auth, setAuth }) {
                                             <select
                                                 className={`status-select status-${getStatusColor(t.status)}`}
                                                 value={t.status}
+                                                disabled={lockedForMe}
                                                 onChange={(e) => changeStatus(t.id, e.target.value)}
                                             >
                                                 <option value="TODO">📝 TODO</option>

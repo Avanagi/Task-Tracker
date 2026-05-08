@@ -5,9 +5,9 @@ import './Tasks.css';
 import './Auth.css';
 
 export default function Login({ setAuth }) {
-    const[username, setUsername] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const[error, setError] = useState('');
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
@@ -36,41 +36,26 @@ export default function Login({ setAuth }) {
         <div className="tasks-container auth-wrapper">
             <div className="form-card auth-card">
                 <div className="text-center mb-4">
-                    <h2 className="welcome-title"><span className="emoji" style={{textShadow: 'none'}}>🚀</span> Task Tracker</h2>
+                    <h2 className="welcome-title"><span className="emoji">🚀</span> Task Tracker</h2>
                     <p className="welcome-subtitle mt-2">С возвращением! Войдите в аккаунт.</p>
                 </div>
 
                 {error && <div className="auth-error-box">{error}</div>}
 
                 <form onSubmit={handleLogin}>
-                    <div style={{ marginBottom: '15px' }}>
-                        <input
-                            className="form-input"
-                            placeholder="Логин"
-                            value={username}
-                            onChange={e => setUsername(e.target.value)}
-                            required
-                        />
+                    <div className="login-input-wrapper">
+                        <input className="form-input" placeholder="Логин" value={username} onChange={e => setUsername(e.target.value)} required />
                     </div>
-                    <div style={{ marginBottom: '25px' }}>
-                        <input
-                            className="form-input"
-                            type="password"
-                            placeholder="Пароль"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                        />
+                    <div className="login-password-wrapper">
+                        <input className="form-input" type="password" placeholder="Пароль" value={password} onChange={e => setPassword(e.target.value)} required />
                     </div>
-                    <button className="submit-btn" type="submit" style={{ width: '100%' }} disabled={loading}>
+                    <button className="submit-btn full-width" type="submit" disabled={loading}>
                         {loading ? 'Вход...' : 'Войти'}
                     </button>
                 </form>
 
                 <div className="mt-4 text-center">
-                    <Link to="/register" className="auth-link">
-                        Нет аккаунта? Зарегистрируйтесь
-                    </Link>
+                    <Link to="/register" className="auth-link">Нет аккаунта? Зарегистрируйтесь</Link>
                 </div>
             </div>
         </div>

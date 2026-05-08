@@ -90,3 +90,14 @@
 .tooltip-list:last-child {
     margin-bottom: 0;
 }
+
+.text-center { text-align: center; }
+.mt-4 { margin-top: 0; }
+.mb-4 { margin-bottom: 1.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+
+.login-input-wrapper { margin-bottom: 15px; }
+.login-password-wrapper { margin-bottom: 25px; }
+.full-width { width: 100%; }
+
+.tasks-container .mt-4 { margin-top: 0 !important; }
