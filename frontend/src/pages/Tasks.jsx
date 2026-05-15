@@ -100,7 +100,12 @@ export default function Tasks({ auth, setAuth }) {
         const stompClient = new Client({
             webSocketFactory: () => socket,
             onConnect: () => {
+                stompClient.subscribe(`/user/queue/notifications`, (message) => {
+                    alert("Уведомление: " + message.body);
+                });
+
                 stompClient.subscribe('/topic/tasks', (message) => {
+                    console.log('Пришел сигнал обновления таблицы');
                     fetchData(false);
                 });
             }
@@ -135,6 +140,15 @@ export default function Tasks({ auth, setAuth }) {
         return () => {
             timeoutIds.forEach(id => clearTimeout(id));
         };
+    }, [tasks]);
+
+    useEffect(() => {
+        if (selectedTask) {
+            const updatedSelectedTask = tasks.find(t => t.id === selectedTask.id);
+            if (updatedSelectedTask) {
+                setSelectedTask(updatedSelectedTask);
+            }
+        }
     }, [tasks]);
 
     const toggleSubtask = async (taskId, subtaskId) => {
@@ -410,7 +424,6 @@ export default function Tasks({ auth, setAuth }) {
                                             <small className="task-description">
                                                 👤 Автор: <strong>{t.reporter?.username}</strong> <br/>
                                                 📆 Дедлайн:
-                                                {/* БЛОКИРУЕМ ИНПУТ, ЕСЛИ ЗАДАЧА DONE ИЛИ МЫ НЕ АВТОР */}
                                                 <input
                                                     type="datetime-local"
                                                     disabled={isDone || !isReporter}
@@ -430,6 +443,7 @@ export default function Tasks({ auth, setAuth }) {
 
                                         <td data-label="Исполнители" style={{ minWidth: '250px' }}>
                                             <Select
+                                                key={t.assignees?.length}
                                                 isMulti
                                                 options={userOptions}
                                                 value={currentAssignees}

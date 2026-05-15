@@ -1,11 +1,16 @@
 package com.tracker.app.tasktracker.service.impl;
 
 import com.tracker.app.tasktracker.dto.TaskCreateDto;
+import com.tracker.app.tasktracker.event.TaskAssigneesChangedEvent;
 import com.tracker.app.tasktracker.event.TaskCreatedEvent;
 import com.tracker.app.tasktracker.event.TaskDeletedEvent;
 import com.tracker.app.tasktracker.event.TaskStatusChangedEvent;
-import com.tracker.app.tasktracker.exception.*;
-import com.tracker.app.tasktracker.model.entity.tasks.*;
+import com.tracker.app.tasktracker.exception.InvalidTaskOperationException;
+import com.tracker.app.tasktracker.exception.TaskNotFoundException;
+import com.tracker.app.tasktracker.exception.UserNotFoundException;
+import com.tracker.app.tasktracker.model.entity.tasks.AbstractTask;
+import com.tracker.app.tasktracker.model.entity.tasks.EpicTask;
+import com.tracker.app.tasktracker.model.entity.tasks.Subtask;
 import com.tracker.app.tasktracker.model.entity.users.User;
 import com.tracker.app.tasktracker.model.enums.TaskStatus;
 import com.tracker.app.tasktracker.repository.TaskRepository;
@@ -37,8 +42,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public AbstractTask createTask(TaskCreateDto dto, String currentUsername) {
-        User reporter = userRepository.findByUsername(currentUsername)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        User reporter = userRepository.findByUsername(currentUsername).orElseThrow(() -> new UserNotFoundException("User not found"));
 
         AbstractTask task = taskFactory.createTask(dto, reporter);
         AbstractTask savedTask = taskRepository.save(task);
@@ -91,21 +95,37 @@ public class TaskServiceImpl implements TaskService {
 
         User userToAssign = userRepository.findById(userId).orElseThrow();
         task.getAssignees().add(userToAssign);
-        return taskRepository.save(task);
+        AbstractTask updatedTask = taskRepository.save(task);
+        eventPublisher.publishEvent(new TaskAssigneesChangedEvent(this, updatedTask, userToAssign, "ASSIGNED"));
+        return updatedTask;
     }
 
     @Override
     @Transactional
     public AbstractTask assignBulk(Long taskId, List<Long> userIds, String currentUsername) {
         AbstractTask task = getTaskById(taskId);
-        checkTaskNotDone(task);
 
-        if (!task.getReporter().getId().equals(getCurrentUser(currentUsername).getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users");
+        Set<User> oldAssignees = new HashSet<>(task.getAssignees());
+        Set<User> newAssignees = new HashSet<>(userRepository.findAllById(userIds));
+
+        task.setAssignees(newAssignees);
+        AbstractTask updatedTask = taskRepository.save(task);
+
+        for (User user : newAssignees) {
+            if (!oldAssignees.contains(user)) {
+                eventPublisher.publishEvent(new TaskAssigneesChangedEvent(this, updatedTask, user, "ASSIGNED"));
+            }
         }
 
-        task.setAssignees(new HashSet<>(userRepository.findAllById(userIds)));
-        return taskRepository.save(task);
+        for (User user : oldAssignees) {
+            if (!newAssignees.contains(user)) {
+                eventPublisher.publishEvent(new TaskAssigneesChangedEvent(this, updatedTask, user, "REMOVED"));
+            }
+        }
+
+        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
+
+        return updatedTask;
     }
 
     @Override
@@ -138,7 +158,10 @@ public class TaskServiceImpl implements TaskService {
         Subtask subtask = epic.getSubtasks().stream().filter(s -> s.getId().equals(subtaskId)).findFirst().orElseThrow();
         subtask.setCompleted(!subtask.isCompleted());
 
-        return taskRepository.save(epic);
+        AbstractTask savedEpic = taskRepository.save(epic);
+        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, savedEpic));
+
+        return savedEpic;
     }
 
     @Override
@@ -160,7 +183,9 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AbstractTask> getAllTasks() { return taskRepository.findAll(); }
+    public List<AbstractTask> getAllTasks() {
+        return taskRepository.findAll();
+    }
 
     @Transactional
     private AbstractTask getTaskById(Long taskId) {
@@ -172,11 +197,11 @@ public class TaskServiceImpl implements TaskService {
 
     @Transactional
     private User getCurrentUser(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UserNotFoundException("User " + username + " not found"));
+        return userRepository.findByUsername(username).orElseThrow(() -> new UserNotFoundException("User " + username + " not found"));
     }
 
     private void checkTaskNotDone(AbstractTask task) {
-        if (task.getStatus() == TaskStatus.DONE) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is DONE");
+        if (task.getStatus() == TaskStatus.DONE)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is DONE");
     }
 }

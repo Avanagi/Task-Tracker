@@ -1,5 +1,6 @@
 package com.tracker.app.tasktracker.event.listener;
 
+import com.tracker.app.tasktracker.event.TaskAssigneesChangedEvent;
 import com.tracker.app.tasktracker.event.TaskCreatedEvent;
 import com.tracker.app.tasktracker.event.TaskDeletedEvent;
 import com.tracker.app.tasktracker.event.TaskStatusChangedEvent;
@@ -11,9 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
-import java.util.Set;
-
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -23,18 +21,11 @@ public class NotificationListener {
     @EventListener
     public void handleTaskStatusChange(TaskStatusChangedEvent event) {
         AbstractTask task = event.getTask();
-        Set<User> recipients = new HashSet<>();
-        if (task.getReporter() != null) {
-            recipients.add(task.getReporter());
-        }
+        String msg = "Task's status '" + task.getTitle() + "' set to " + task.getStatus();
+        log.info(msg);
+        if (task.getReporter() != null) sendToUser(task.getReporter(), msg);
         if (task.getAssignees() != null) {
-            recipients.addAll(task.getAssignees());
-        }
-        for (User user : recipients) {
-            if (user.getEmail() != null) {
-                log.info("Sending email on [{}]: Task's status '{}' changed to {}",
-                        user.getEmail(), task.getTitle(), task.getStatus());
-            }
+            task.getAssignees().forEach(u -> sendToUser(u, msg));
         }
         messagingTemplate.convertAndSend("/topic/tasks", "UPDATE");
     }
@@ -57,5 +48,31 @@ public class NotificationListener {
     public void handleTaskDeleted(TaskDeletedEvent event) {
         log.info("Task removed: ID {}. Updating clients", event.getTaskId());
         messagingTemplate.convertAndSend("/topic/tasks", "UPDATE");
+    }
+
+    @EventListener
+    public void handleAssigneesChanged(TaskAssigneesChangedEvent event) {
+        User user = event.getChangedUser();
+        AbstractTask task = event.getTask();
+
+        String actionText = event.getAction().equals("ASSIGNED")
+                ? "You were assigned to the task: "
+                : "You were removed from the task: ";
+
+        String msg = actionText + "'" + task.getTitle() + "'";
+
+        messagingTemplate.convertAndSendToUser(
+                user.getUsername(),
+                "/queue/notifications",
+                msg
+        );
+
+        messagingTemplate.convertAndSend("/topic/tasks", "UPDATE");
+
+        log.info("Email sending to {}: {}", user.getUsername(), msg);
+    }
+
+    private void sendToUser(User user, String message) {
+        messagingTemplate.convertAndSendToUser(user.getUsername(), "/queue/notifications", message);
     }
 }

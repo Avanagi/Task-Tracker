@@ -484,3 +484,11 @@ select.form-select option, select.status-select option {
     opacity: 0.7;
     background: rgb(110 219 173 / 0.24);
 }
+
+.subtask-item {
+    transition: background-color 0.3s;
+}
+
+.subtask-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
