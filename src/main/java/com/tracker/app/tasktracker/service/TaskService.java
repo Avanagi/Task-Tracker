@@ -19,7 +19,7 @@ public interface TaskService {
     AbstractTask assignUser(Long taskId, Long userId, String currentUsername);
 
     @Transactional
-    public AbstractTask toggleSubtask(Long taskId, Long subtaskId, String currentUsername);
+    AbstractTask toggleSubtask(Long taskId, Long subtaskId, String currentUsername);
 
     @Transactional
     AbstractTask assignBulk(Long id, List<Long> userIds, String name);

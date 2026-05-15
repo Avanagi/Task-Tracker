@@ -479,3 +479,8 @@ select.form-select option, select.status-select option {
     70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
     100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
 }
+
+.task-row.done-row {
+    opacity: 0.7;
+    background: rgb(110 219 173 / 0.24);
+}

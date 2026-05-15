@@ -29,6 +29,11 @@ public class EpicTask extends AbstractTask {
     private List<Subtask> subtasks = new ArrayList<>();
 
     @Override
+    public String getType() {
+        return "EPIC";
+    }
+
+    @Override
     public final boolean equals(Object o) {
         if (this == o) return true;
         if (o == null) return false;

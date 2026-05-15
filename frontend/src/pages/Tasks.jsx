@@ -173,7 +173,7 @@ export default function Tasks({ auth, setAuth }) {
             fetchData(false);
         } catch (err) {
             console.error('Ошибка при создании задачи:', err);
-            alert('Не удалось создать задачу. Подробности в консоли.');
+            alert('Не удалось создать задачу.');
         } finally {
             setLoading(false);
         }
@@ -256,8 +256,10 @@ export default function Tasks({ auth, setAuth }) {
 
     const userOptions = users.map(u => ({ value: u.id, label: u.username }));
 
+    const isDoneModal = selectedTask ? selectedTask.status === 'DONE' : false;
     const isReporterModal = selectedTask ? String(selectedTask.reporter?.id) === String(userId) : false;
-    const lockedModal = selectedTask ? (isOverdue(selectedTask) && !isReporterModal) : false;
+    const isAssigneeModal = selectedTask ? selectedTask.assignees?.some(a => String(a.id) === String(userId)) : false;
+    const canEditModal = !isDoneModal && (isReporterModal || isAssigneeModal);
 
     return (
         <div className="tasks-container">
@@ -386,12 +388,12 @@ export default function Tasks({ auth, setAuth }) {
                             filteredTasks.map(t => {
                                 const currentAssignees = t.assignees?.map(a => ({ value: a.id, label: a.username })) ||[];
                                 const overdue = isOverdue(t);
-
                                 const isReporter = String(t.reporter?.id) === String(userId);
+                                const isDone = t.status === 'DONE';
                                 const lockedForMe = overdue && !isReporter;
 
                                 return (
-                                    <tr key={t.id} className={`task-row ${overdue ? 'overdue-row' : ''}`}>
+                                    <tr key={t.id} className={`task-row ${overdue ? 'overdue-row' : ''} ${isDone ? 'done-row' : ''}`}>
                                         <td data-label="ID"><span className="task-id">#{t.id}</span></td>
 
                                         <td data-label="Тип">
@@ -403,32 +405,26 @@ export default function Tasks({ auth, setAuth }) {
                                         <td data-label="Название">
                                             <strong>{t.title}</strong>
                                             {overdue && <span className="overdue-badge">🔥 ПРОСРОЧЕНО</span>}
-                                            {lockedForMe && <span className="badge bg-secondary ms-2" style={{fontSize: '10px', padding: '3px 6px', borderRadius: '4px'}}>🔒 ЗАБЛОКИРОВАНО</span>}
+                                            {isDone && <span className="badge bg-success ms-2" style={{fontSize: '10px'}}>✅ ЗАВЕРШЕНО</span>}
                                             <br/>
-
-                                            <small className="task-description" style={{color: '#6c757d', marginTop: '5px'}}>
-                                                👤 Автор: <strong style={{color: '#fff'}}>{t.reporter?.username || 'Неизвестен'}</strong> <br/>
+                                            <small className="task-description">
+                                                👤 Автор: <strong>{t.reporter?.username}</strong> <br/>
                                                 📆 Дедлайн:
-
-                                                {isReporter ? (
-                                                    <input
-                                                        type="datetime-local"
-                                                        style={{
-                                                            background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.2)',
-                                                            borderRadius: '4px', padding: '2px 5px', marginLeft: '5px', fontSize: '11px'
-                                                        }}
-                                                        defaultValue={t.dueDate ? t.dueDate.substring(0, 16) : ''}
-                                                        onBlur={(e) => {
-                                                            if (e.target.value && e.target.value + ':00' !== t.dueDate) {
-                                                                changeDeadline(t.id, e.target.value);
-                                                            }
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <span style={{ color: overdue ? '#fca5a5' : 'inherit', marginLeft: '5px' }}>
-                                                        {t.dueDate ? new Date(t.dueDate).toLocaleString() : 'Нет'}
-                                                    </span>
-                                                )}
+                                                {/* БЛОКИРУЕМ ИНПУТ, ЕСЛИ ЗАДАЧА DONE ИЛИ МЫ НЕ АВТОР */}
+                                                <input
+                                                    type="datetime-local"
+                                                    disabled={isDone || !isReporter}
+                                                    style={{
+                                                        background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid rgba(255,255,255,0.2)',
+                                                        borderRadius: '4px', padding: '2px 5px', marginLeft: '5px', fontSize: '11px'
+                                                    }}
+                                                    defaultValue={t.dueDate ? t.dueDate.substring(0, 16) : ''}
+                                                    onBlur={(e) => {
+                                                        if (e.target.value && e.target.value + ':00' !== t.dueDate) {
+                                                            changeDeadline(t.id, e.target.value);
+                                                        }
+                                                    }}
+                                                />
                                             </small>
                                         </td>
 
@@ -440,7 +436,7 @@ export default function Tasks({ auth, setAuth }) {
                                                 placeholder="Не назначено"
                                                 menuPortalTarget={document.body}
                                                 styles={glassSelectStyles}
-                                                isDisabled={!isReporter}
+                                                isDisabled={isDone || !isReporter}
                                                 onChange={(selectedOptions) => {
                                                     const ids = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
                                                     updateAssignees(t.id, ids);
@@ -451,7 +447,7 @@ export default function Tasks({ auth, setAuth }) {
                                             <select
                                                 className={`status-select status-${getStatusColor(t.status)}`}
                                                 value={t.status}
-                                                disabled={lockedForMe}
+                                                disabled={isDone}
                                                 onChange={(e) => changeStatus(t.id, e.target.value)}
                                             >
                                                 <option value="TODO">📝 TODO</option>
@@ -498,6 +494,7 @@ export default function Tasks({ auth, setAuth }) {
                                                 <input
                                                     type="checkbox"
                                                     checked={s.completed}
+                                                    disabled={isDoneModal || !canEditModal}
                                                     onChange={() => toggleSubtask(selectedTask.id, s.id)}
                                                     className="me-2"
                                                 />

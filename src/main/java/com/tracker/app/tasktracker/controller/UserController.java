@@ -1,7 +1,6 @@
 package com.tracker.app.tasktracker.controller;
 
-import com.tracker.app.tasktracker.model.entity.users.User;
-import com.tracker.app.tasktracker.repository.UserRepository;
+import com.tracker.app.tasktracker.dto.UserResponseDto;
 import com.tracker.app.tasktracker.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +16,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         log.info("Received request to get all users");
         return ResponseEntity.ok(userService.getAllUsers());
     }

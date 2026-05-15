@@ -4,13 +4,8 @@ import com.tracker.app.tasktracker.dto.TaskCreateDto;
 import com.tracker.app.tasktracker.event.TaskCreatedEvent;
 import com.tracker.app.tasktracker.event.TaskDeletedEvent;
 import com.tracker.app.tasktracker.event.TaskStatusChangedEvent;
-import com.tracker.app.tasktracker.exception.InvalidTaskOperationException;
-import com.tracker.app.tasktracker.exception.SubtaskNotFoundException;
-import com.tracker.app.tasktracker.exception.TaskNotFoundException;
-import com.tracker.app.tasktracker.exception.UserNotFoundException;
-import com.tracker.app.tasktracker.model.entity.tasks.AbstractTask;
-import com.tracker.app.tasktracker.model.entity.tasks.EpicTask;
-import com.tracker.app.tasktracker.model.entity.tasks.Subtask;
+import com.tracker.app.tasktracker.exception.*;
+import com.tracker.app.tasktracker.model.entity.tasks.*;
 import com.tracker.app.tasktracker.model.entity.users.User;
 import com.tracker.app.tasktracker.model.enums.TaskStatus;
 import com.tracker.app.tasktracker.repository.TaskRepository;
@@ -25,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,180 +37,135 @@ public class TaskServiceImpl implements TaskService {
     @Override
     @Transactional
     public AbstractTask createTask(TaskCreateDto dto, String currentUsername) {
-        log.debug("Creating task with DTO: {}", dto);
-
-        User reporter = userRepository.findByUsername(currentUsername).orElseThrow(() -> {
-            log.error("Current user not found: {}", currentUsername);
-            return new UserNotFoundException("User " + currentUsername + " not found");
-        });
+        User reporter = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         AbstractTask task = taskFactory.createTask(dto, reporter);
-        log.debug("Task created by factory: {}", task);
-
         AbstractTask savedTask = taskRepository.save(task);
-        log.info("Task created successfully - ID: {}, Type: {}, Time: {}", savedTask.getId(), dto.getType(), task.getCreatedAt());
 
+        log.info("Task created ID: {}", savedTask.getId());
         eventPublisher.publishEvent(new TaskCreatedEvent(this, savedTask));
-
         return savedTask;
     }
 
     @Override
     @Transactional
     public AbstractTask changeStatus(Long taskId, TaskStatus newStatus, String currentUsername) {
-        log.debug("Changing status for task ID: {} to status: {} by user: {}", taskId, newStatus, currentUsername);
-
         AbstractTask task = getTaskById(taskId);
         User currentUser = getCurrentUser(currentUsername);
 
         boolean isReporter = task.getReporter().getId().equals(currentUser.getId());
         boolean isAssignee = task.getAssignees().stream().anyMatch(a -> a.getId().equals(currentUser.getId()));
 
-        boolean isOverdue = task.getDueDate() != null
-                && task.getDueDate().isBefore(java.time.LocalDateTime.now())
-                && task.getStatus() != TaskStatus.DONE;
-
-        if (isOverdue && !isReporter) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task's time exceeded.");
-        }
-
         if (!isReporter && !isAssignee) {
-            log.warn("Access denied. User {} tried to change status of task {}", currentUsername, taskId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author or assignee can change status of task");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author or assignee can change status");
         }
 
-        TaskStatus oldStatus = task.getStatus();
+        if (newStatus == TaskStatus.DONE && !isReporter) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can mark task as DONE");
+        }
+
+        if (task.getStatus() == TaskStatus.DONE && newStatus != TaskStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is already DONE. Move to IN_PROGRESS to edit.");
+        }
+
+        if (task.getDueDate().isBefore(LocalDateTime.now()) && !isReporter) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task overdue! Only author can edit.");
+        }
+
         task.setStatus(newStatus);
         AbstractTask updatedTask = taskRepository.save(task);
-
-        log.info("Task status updated - Task ID: {}, Old status: {}, New status: {}", taskId, oldStatus, newStatus);
         eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
-
         return updatedTask;
     }
 
     @Override
     @Transactional
     public AbstractTask assignUser(Long taskId, Long userId, String currentUsername) {
-        log.debug("Assigning user ID: {} to task ID: {} by user: {}", userId, taskId, currentUsername);
-
         AbstractTask task = getTaskById(taskId);
-        User currentUser = getCurrentUser(currentUsername);
+        checkTaskNotDone(task);
 
-        if (!task.getReporter().getId().equals(currentUser.getId())) {
-            log.warn("Access denied. User {} tried to assign users to task {}", currentUsername, taskId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users to task");
+        if (!task.getReporter().getId().equals(getCurrentUser(currentUsername).getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users");
         }
 
-        User userToAssign = userRepository.findById(userId).orElseThrow(() -> {
-            userNotFoundId(userId);
-            return new UserNotFoundException("User with ID " + userId + " not found");
-        });
-
-        Set<User> assignees = task.getAssignees();
-        boolean isNewUser = assignees.add(userToAssign);
-
-        if (isNewUser) {
-            log.info("User ID: {} assigned to task ID: {}", userId, taskId);
-        }
-
-        AbstractTask updatedTask = taskRepository.save(task);
-        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
-        return updatedTask;
+        User userToAssign = userRepository.findById(userId).orElseThrow();
+        task.getAssignees().add(userToAssign);
+        return taskRepository.save(task);
     }
 
     @Override
     @Transactional
     public AbstractTask assignBulk(Long taskId, List<Long> userIds, String currentUsername) {
-        log.debug("Bulk assigning users to task ID: {} by user: {}", taskId, currentUsername);
-
         AbstractTask task = getTaskById(taskId);
-        User currentUser = getCurrentUser(currentUsername);
+        checkTaskNotDone(task);
 
-        if (!task.getReporter().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users to task");
+        if (!task.getReporter().getId().equals(getCurrentUser(currentUsername).getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users");
         }
 
-        List<Long> idsToAssign = (userIds == null) ? List.of() : userIds;
-        task.setAssignees(new HashSet<>(userRepository.findAllById(idsToAssign)));
-
-        AbstractTask updatedTask = taskRepository.save(task);
-        log.info("Bulk assignment completed for task ID: {}", taskId);
-
-        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
-        return updatedTask;
+        task.setAssignees(new HashSet<>(userRepository.findAllById(userIds)));
+        return taskRepository.save(task);
     }
 
     @Override
     @Transactional
     public void deleteTask(Long taskId, String currentUsername) {
-        log.debug("Deleting task ID: {} by user: {}", taskId, currentUsername);
-
         AbstractTask task = getTaskById(taskId);
-        User currentUser = getCurrentUser(currentUsername);
-
-        if (!task.getReporter().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can remove users from task");
+        if (!task.getReporter().getId().equals(getCurrentUser(currentUsername).getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can delete task");
         }
-
         taskRepository.deleteById(taskId);
-        log.info("Task ID: {} deleted successfully", taskId);
         eventPublisher.publishEvent(new TaskDeletedEvent(this, taskId));
     }
 
     @Override
     @Transactional
     public AbstractTask toggleSubtask(Long taskId, Long subtaskId, String currentUsername) {
-        log.debug("Toggling subtask ID: {} for task ID: {} by user: {}", subtaskId, taskId, currentUsername);
-
         AbstractTask task = getTaskById(taskId);
-        User currentUser = getCurrentUser(currentUsername);
+        checkTaskNotDone(task);
 
+        User currentUser = getCurrentUser(currentUsername);
         boolean isReporter = task.getReporter().getId().equals(currentUser.getId());
         boolean isAssignee = task.getAssignees().stream().anyMatch(a -> a.getId().equals(currentUser.getId()));
 
         if (!isReporter && !isAssignee) {
-            log.warn("Access denied. User {} tried to toggle subtask of epic {}", currentUsername, taskId);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author and assignees can toggle subtasks");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized");
         }
 
-        if (!(task instanceof EpicTask epic)) {
-            log.error("Invalid operation - Task ID: {} is not an EpicTask", taskId);
-            throw new InvalidTaskOperationException("Subtasks are only available for epic tasks.");
-        }
+        if (!(task instanceof EpicTask epic)) throw new InvalidTaskOperationException("Not an epic");
 
-        Subtask subtask = epic.getSubtasks().stream().filter(s -> s.getId().equals(subtaskId)).findFirst().orElseThrow(() -> {
-            log.error("Subtask not found - Subtask ID: {} in Epic ID: {}", subtaskId, taskId);
-            return new SubtaskNotFoundException("Subtask with ID " + subtaskId + " not found");
-        });
-
+        Subtask subtask = epic.getSubtasks().stream().filter(s -> s.getId().equals(subtaskId)).findFirst().orElseThrow();
         subtask.setCompleted(!subtask.isCompleted());
-        log.info("Subtask toggled - Epic ID: {}, Subtask ID: {}, New status: {}", taskId, subtaskId, subtask.isCompleted());
 
         return taskRepository.save(epic);
     }
 
+    @Override
     @Transactional
     public AbstractTask updateDeadline(Long taskId, String dueDateStr, String currentUsername) {
-        log.debug("Updating deadline for task {} by user {}", taskId, currentUsername);
         AbstractTask task = getTaskById(taskId);
-        User currentUser = getCurrentUser(currentUsername);
 
-        if (!task.getReporter().getId().equals(currentUser.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can change deadline!");
+        if (task.getStatus() == TaskStatus.DONE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to update deadline anymore");
         }
 
-        task.setDueDate(java.time.LocalDateTime.parse(dueDateStr));
-        AbstractTask updatedTask = taskRepository.save(task);
+        if (!task.getReporter().getId().equals(getCurrentUser(currentUsername).getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can change deadline");
+        }
 
-        eventPublisher.publishEvent(new TaskStatusChangedEvent(this, updatedTask));
-        return updatedTask;
+        task.setDueDate(LocalDateTime.parse(dueDateStr));
+        return taskRepository.save(task);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AbstractTask> getAllTasks() { return taskRepository.findAll(); }
 
     @Transactional
     private AbstractTask getTaskById(Long taskId) {
         return taskRepository.findById(taskId).orElseThrow(() -> {
-            taskNotFoundId(taskId);
+            log.error("Task not found with ID: {}", taskId);
             return new TaskNotFoundException("Task with ID " + taskId + " not found");
         });
     }
@@ -225,13 +176,7 @@ public class TaskServiceImpl implements TaskService {
                 .orElseThrow(() -> new UserNotFoundException("User " + username + " not found"));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<AbstractTask> getAllTasks() {
-        log.debug("Fetching all tasks from database");
-        return taskRepository.findAll();
+    private void checkTaskNotDone(AbstractTask task) {
+        if (task.getStatus() == TaskStatus.DONE) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is DONE");
     }
-
-    private static void userNotFoundId(Long userId) { log.error("User not found with ID: {}", userId); }
-    private static void taskNotFoundId(Long taskId) { log.error("Task not found with ID: {}", taskId); }
 }

@@ -1,20 +1,15 @@
 package com.tracker.app.tasktracker.service;
 
 import com.tracker.app.tasktracker.dto.UserCreateDto;
-import com.tracker.app.tasktracker.model.entity.users.User;
-import com.tracker.app.tasktracker.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import com.tracker.app.tasktracker.dto.UserResponseDto;
 
 import java.util.List;
 
 public interface UserService {
 
-    User createUser(UserCreateDto dto);
+    UserResponseDto createUser(UserCreateDto dto);
 
-    User getUserByUsername(String username);
+    UserResponseDto getUserByUsername(String username);
 
-    List<User> getAllUsers();
+    List<UserResponseDto> getAllUsers();
 }

@@ -27,6 +27,11 @@ public class BugTask extends AbstractTask {
     private String stepsToReproduce;
 
     @Override
+    public String getType() {
+        return "BUG";
+    }
+
+    @Override
     public final boolean equals(Object o) {
         if (this == o) return true;
         if (o == null) return false;

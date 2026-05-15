@@ -1,8 +1,7 @@
 package com.tracker.app.tasktracker.controller;
 
 import com.tracker.app.tasktracker.dto.UserCreateDto;
-import com.tracker.app.tasktracker.model.entity.users.User;
-import com.tracker.app.tasktracker.repository.UserRepository;
+import com.tracker.app.tasktracker.dto.UserResponseDto;
 import com.tracker.app.tasktracker.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +19,15 @@ public class AuthController {
     private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<User> register(@Valid @RequestBody UserCreateDto dto) {
+    public ResponseEntity<UserResponseDto> register(@Valid @RequestBody UserCreateDto dto) {
         log.info("Received request to register user {}", dto.getUsername());
         return ResponseEntity.ok(userService.createUser(dto));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(Principal principal) {
-        User user = userService.getUserByUsername(principal.getName());
-        log.info("User with name [{}] found", user.getUsername());
-        return ResponseEntity.ok(user);
+    public ResponseEntity<UserResponseDto> me(Principal principal) {
+        UserResponseDto userDto = userService.getUserByUsername(principal.getName());
+        log.info("User with name [{}] found", userDto.getUsername());
+        return ResponseEntity.ok(userDto);
     }
 }

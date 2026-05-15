@@ -4,7 +4,6 @@ import com.tracker.app.tasktracker.dto.TaskCreateDto;
 import com.tracker.app.tasktracker.model.entity.tasks.AbstractTask;
 import com.tracker.app.tasktracker.model.enums.TaskStatus;
 import com.tracker.app.tasktracker.service.TaskService;
-import com.tracker.app.tasktracker.repository.TaskRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

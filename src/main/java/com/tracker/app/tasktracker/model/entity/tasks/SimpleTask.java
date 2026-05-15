@@ -30,6 +30,11 @@ public class SimpleTask extends AbstractTask {
     }
 
     @Override
+    public String getType() {
+        return "TASK";
+    }
+
+    @Override
     public final int hashCode() {
         return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
     }

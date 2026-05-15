@@ -1,6 +1,8 @@
 package com.tracker.app.tasktracker.service.impl;
 
 import com.tracker.app.tasktracker.dto.UserCreateDto;
+import com.tracker.app.tasktracker.mapper.UserMapper;
+import com.tracker.app.tasktracker.dto.UserResponseDto;
 import com.tracker.app.tasktracker.exception.UserNotFoundException;
 import com.tracker.app.tasktracker.model.entity.users.User;
 import com.tracker.app.tasktracker.repository.UserRepository;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,34 +22,36 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional
-    public User createUser(UserCreateDto dto) {
+    public UserResponseDto createUser(UserCreateDto dto) {
         User user = User.builder()
                 .username(dto.getUsername())
                 .email(dto.getEmail())
                 .password(passwordEncoder.encode(dto.getPassword()))
                 .build();
 
-        log.debug("User: {}", user);
+        User savedUser = userRepository.save(user);
+        log.info("User created successfully: {}", savedUser.getUsername());
 
-        return userRepository.save(user);
+        return userMapper.toDto(savedUser);
     }
 
     @Override
     @Transactional
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.error("User not found with username: {}", username);
-                    return new UserNotFoundException("User " + username + " not found");
-                });
+    public UserResponseDto getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        return userMapper.toDto(user);
     }
 
     @Override
     @Transactional
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserResponseDto> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(userMapper::toDto)
+                .collect(Collectors.toList());
     }
 }

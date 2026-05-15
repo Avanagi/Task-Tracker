@@ -1,10 +1,12 @@
 package com.tracker.app.tasktracker.model.entity.tasks;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.tracker.app.tasktracker.model.entity.users.User;
 import com.tracker.app.tasktracker.model.enums.TaskStatus;
 import com.tracker.app.tasktracker.model.interfaces.Assignable;
 import com.tracker.app.tasktracker.model.interfaces.Auditable;
+import com.tracker.app.tasktracker.model.interfaces.TaskTypeable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -22,20 +24,17 @@ import java.util.*;
 @Setter
 @ToString
 @NoArgsConstructor
-public abstract class AbstractTask implements Auditable, Assignable {
+public abstract class AbstractTask implements Auditable, Assignable, TaskTypeable {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Override
     @JsonProperty("type")
-    public String getType() {
-        if (this instanceof EpicTask) return "EPIC";
-        if (this instanceof BugTask) return "BUG";
-        return "TASK";
-    }
+    public abstract String getType();
 
     @NotBlank(message = "Title is required")
     @Size(min = 3, max = 255, message = "Title must be between 3 and 255 characters")
-    @Pattern(regexp = "^[a-zA-Z0-9\\s\\-_,.!?]+$",
+    @Pattern(regexp = "^[a-zA-Zа-яА-ЯёЁ0-9\\s!.,_\\-]+$",
             message = "Title contains invalid characters")
     @Column(nullable = false)
     private String title;
@@ -62,6 +61,7 @@ public abstract class AbstractTask implements Auditable, Assignable {
     @NotNull(message = "Reporter is required")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reporter_id", nullable = false)
+    @JsonIgnoreProperties({"password", "email", "hibernateLazyInitializer", "handler"})
     @ToString.Exclude
     private User reporter;
 
@@ -73,13 +73,9 @@ public abstract class AbstractTask implements Auditable, Assignable {
             inverseJoinColumns = @JoinColumn(name = "user_id"),
             uniqueConstraints = @UniqueConstraint(columnNames = {"task_id", "user_id"})
     )
+    @JsonIgnoreProperties({"password", "email", "hibernateLazyInitializer", "handler"})
     @ToString.Exclude
     private Set<User> assignees = new HashSet<>();
-
-    @Size(max = 50, message = "Cannot have more than 50 comments")
-    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
-    @ToString.Exclude
-    private List<Comment> comments = new ArrayList<>();
 
     @PrePersist
     public void prePersist() {

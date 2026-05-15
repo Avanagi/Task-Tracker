@@ -12,5 +12,6 @@ public class BugCreationStrategy implements TaskCreationStrategy {
         bug.setStepsToReproduce(dto.getStepsToReproduce());
         return bug;
     }
+
     public String getType() { return "BUG"; }
 }

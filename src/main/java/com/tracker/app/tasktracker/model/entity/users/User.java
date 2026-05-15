@@ -1,5 +1,6 @@
 package com.tracker.app.tasktracker.model.entity.users;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -40,6 +41,7 @@ public class User {
             message = "Password must be at least 8 characters, contain uppercase, lowercase, and digit")
     @Size(min = 8, max = 120, message = "Password must be between 8 and 120 characters")
     @Column(nullable = false)
+    @JsonIgnore
     private String password;
 
     @Override

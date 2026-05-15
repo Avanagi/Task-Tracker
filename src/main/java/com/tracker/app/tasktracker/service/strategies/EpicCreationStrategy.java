@@ -19,5 +19,6 @@ public class EpicCreationStrategy implements TaskCreationStrategy {
         }
         return epic;
     }
+
     public String getType() { return "EPIC"; }
 }
