@@ -6,6 +6,7 @@ import com.tracker.app.tasktracker.event.TaskCreatedEvent;
 import com.tracker.app.tasktracker.event.TaskDeletedEvent;
 import com.tracker.app.tasktracker.event.TaskStatusChangedEvent;
 import com.tracker.app.tasktracker.exception.InvalidTaskOperationException;
+import com.tracker.app.tasktracker.exception.SubtaskNotFoundException;
 import com.tracker.app.tasktracker.exception.TaskNotFoundException;
 import com.tracker.app.tasktracker.exception.UserNotFoundException;
 import com.tracker.app.tasktracker.model.entity.tasks.AbstractTask;
@@ -105,8 +106,14 @@ public class TaskServiceImpl implements TaskService {
     public AbstractTask assignBulk(Long taskId, List<Long> userIds, String currentUsername) {
         AbstractTask task = getTaskById(taskId);
 
+        User currentUser = getCurrentUser(currentUsername);
+        if (!task.getReporter().getId().equals(currentUser.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only author can assign users");
+        }
+
         Set<User> oldAssignees = new HashSet<>(task.getAssignees());
-        Set<User> newAssignees = new HashSet<>(userRepository.findAllById(userIds));
+        List<Long> idsToAssign = (userIds == null) ? List.of() : userIds;
+        Set<User> newAssignees = new HashSet<>(userRepository.findAllById(idsToAssign));
 
         task.setAssignees(newAssignees);
         AbstractTask updatedTask = taskRepository.save(task);
@@ -155,7 +162,10 @@ public class TaskServiceImpl implements TaskService {
 
         if (!(task instanceof EpicTask epic)) throw new InvalidTaskOperationException("Not an epic");
 
-        Subtask subtask = epic.getSubtasks().stream().filter(s -> s.getId().equals(subtaskId)).findFirst().orElseThrow();
+        Subtask subtask = epic.getSubtasks().stream()
+                .filter(s -> s.getId().equals(subtaskId))
+                .findFirst()
+                .orElseThrow(() -> new SubtaskNotFoundException("Subtask with ID " + subtaskId + " not found"));
         subtask.setCompleted(!subtask.isCompleted());
 
         AbstractTask savedEpic = taskRepository.save(epic);

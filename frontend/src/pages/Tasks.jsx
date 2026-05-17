@@ -54,7 +54,9 @@ export default function Tasks({ auth, setAuth }) {
         stepsToReproduce: '',
         subtaskTitles: '',
         assigneeIds:[],
-        reporterId: userId
+        reporterId: userId,
+        stepsError: '',
+        subtaskError: ''
     });
 
     const fetchData = async (showSpinner = true) => {
@@ -91,6 +93,38 @@ export default function Tasks({ auth, setAuth }) {
             console.error('Ошибка:', err);
             alert('Не удалось изменить дедлайн. У вас нет прав.');
         }
+    };
+
+    const validateTaskForm = () => {
+        let isValid = true;
+        const errors = {};
+
+        if (!newTask.title.trim()) {
+            alert('Название задачи обязательно для заполнения');
+            isValid = false;
+        }
+
+        if (!newTask.dueDate) {
+            alert('Дедлайн обязателен для заполнения');
+            isValid = false;
+        }
+
+        if (newTask.type === 'BUG') {
+            if (!newTask.stepsToReproduce || newTask.stepsToReproduce.trim() === '') {
+                errors.stepsError = '⚠️ Пожалуйста, заполните шаги воспроизведения (От 10 символов до 5000 символов)';
+                isValid = false;
+            }
+        }
+
+        if (newTask.type === 'EPIC') {
+            if (!newTask.subtaskTitles || newTask.subtaskTitles.trim() === '') {
+                errors.subtaskError = '⚠️ Пожалуйста, заполните чек-лист подзадач (От 3 символов на подзадачу)';
+                isValid = false;
+            }
+        }
+
+        setNewTask({...newTask, ...errors});
+        return isValid;
     };
 
     useEffect(() => {
@@ -169,12 +203,18 @@ export default function Tasks({ auth, setAuth }) {
 
     const handleCreateTask = async (e) => {
         e.preventDefault();
+
+        if (!validateTaskForm()) {
+            return;
+        }
+
         setLoading(true);
         const payload = { ...newTask };
 
         if (payload.type !== 'BUG') delete payload.stepsToReproduce;
-        if (payload.type === 'EPIC') payload.subtaskTitles = payload.subtaskTitles ? payload.subtaskTitles.split(',').map(s => s.trim()) :[];
-        else delete payload.subtaskTitles;
+        if (payload.type === 'EPIC') {
+            payload.subtaskTitles = payload.subtaskTitles ? payload.subtaskTitles.split(',').map(s => s.trim()) : [];
+        } else delete payload.subtaskTitles;
         if (payload.dueDate.length === 16) payload.dueDate += ':00';
 
         try {
@@ -182,7 +222,8 @@ export default function Tasks({ auth, setAuth }) {
             setShowForm(false);
             setNewTask({
                 type: 'TASK', title: '', description: '', dueDate: '',
-                stepsToReproduce: '', subtaskTitles: '', assigneeIds:[], reporterId: userId
+                stepsToReproduce: '', subtaskTitles: '', assigneeIds:[], reporterId: userId,
+                stepsError: '', subtaskError: ''
             });
             fetchData(false);
         } catch (err) {
@@ -355,14 +396,44 @@ export default function Tasks({ auth, setAuth }) {
 
                         {newTask.type === 'BUG' && (
                             <div style={{ marginBottom: '15px' }}>
-                                <label className="form-label">🔍 Шаги воспроизведения (для бага)</label>
-                                <textarea className="form-textarea" rows="2" onChange={e => setNewTask({...newTask, stepsToReproduce: e.target.value})} style={{ border: '1px solid #dc3545' }}/>
+                                <label className="form-label">🔍 Шаги воспроизведения (для бага) *</label>
+                                <textarea
+                                    className="form-textarea"
+                                    rows="2"
+                                    onChange={e => setNewTask({
+                                        ...newTask,
+                                        stepsToReproduce: e.target.value,
+                                        stepsError: ''
+                                    })}
+                                    style={{ border: newTask.stepsError ? '1px solid #dc3545' : '1px solid #0d6efd' }}
+                                    value={newTask.stepsToReproduce}
+                                />
+                                {newTask.stepsError && (
+                                    <div style={{ color: '#dc3545', fontSize: '12px', marginTop: '5px' }}>
+                                        {newTask.stepsError}
+                                    </div>
+                                )}
                             </div>
                         )}
+
                         {newTask.type === 'EPIC' && (
                             <div style={{ marginBottom: '15px' }}>
-                                <label className="form-label">✅ Чек-лист (Текст подзадач, через запятую)</label>
-                                <input className="form-input" onChange={e => setNewTask({...newTask, subtaskTitles: e.target.value})} style={{ border: '1px solid #0d6efd' }}/>
+                                <label className="form-label">✅ Чек-лист (Текст подзадач, через запятую) *</label>
+                                <input
+                                    className="form-input"
+                                    onChange={e => setNewTask({
+                                        ...newTask,
+                                        subtaskTitles: e.target.value,
+                                        subtaskError: ''
+                                    })}
+                                    style={{ border: newTask.subtaskError ? '1px solid #dc3545' : '1px solid #0d6efd' }}
+                                    value={newTask.subtaskTitles}
+                                />
+                                {newTask.subtaskError && (
+                                    <div style={{ color: '#dc3545', fontSize: '12px', marginTop: '5px' }}>
+                                        {newTask.subtaskError}
+                                    </div>
+                                )}
                             </div>
                         )}
 

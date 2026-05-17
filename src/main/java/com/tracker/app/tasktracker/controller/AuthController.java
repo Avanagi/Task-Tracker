@@ -27,7 +27,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponseDto> me(Principal principal) {
         UserResponseDto userDto = userService.getUserByUsername(principal.getName());
-        log.info("User with name [{}] found", userDto.getUsername());
+        log.info("User with name [{}] found", userDto != null ? userDto.getUsername() : "null");
         return ResponseEntity.ok(userDto);
     }
 }
