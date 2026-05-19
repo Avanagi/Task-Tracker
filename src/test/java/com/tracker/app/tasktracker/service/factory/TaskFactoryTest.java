@@ -30,7 +30,7 @@ class TaskFactoryTest {
     private UserRepository userRepository;
 
     @Mock
-    private TaskCreationStrategy bugStrategy; // Мокаем конкретную стратегию
+    private TaskCreationStrategy bugStrategy;
 
     private TaskFactory taskFactory;
 
@@ -40,8 +40,6 @@ class TaskFactoryTest {
 
     @BeforeEach
     void setUp() {
-        // Чтобы Spring в тесте корректно собрал List<TaskCreationStrategy>,
-        // мы вручную передаем список моков в конструктор фабрики.
         taskFactory = new TaskFactory(userRepository, List.of(bugStrategy));
 
         reporter = User.builder().id(1L).username("Author").build();
@@ -53,23 +51,18 @@ class TaskFactoryTest {
         dto.setDueDate(LocalDateTime.now().plusDays(2));
         dto.setStepsToReproduce("Step 1");
 
-        mockTask = new BugTask(); // Пустая болванка, которую "создаст" стратегия
+        mockTask = new BugTask();
     }
 
-    // ==========================================
-    // МЕТОД: createTask
-    // ==========================================
 
-    @Test // ПОЗИТИВНЫЙ (Создание задачи с назначенными исполнителями)
+    @Test
     void createTask_Positive_SuccessWithAssignees() {
         dto.setAssigneeIds(List.of(2L, 3L));
 
         User assignee = User.builder().id(2L).username("Dev").build();
 
-        // Учим стратегию отзываться на тип "BUG" и возвращать болванку
         when(bugStrategy.getType()).thenReturn("BUG");
         when(bugStrategy.create(dto)).thenReturn(mockTask);
-        // Имитируем поиск пользователей БД
         when(userRepository.findAllById(dto.getAssigneeIds())).thenReturn(List.of(assignee));
 
         AbstractTask result = taskFactory.createTask(dto, reporter);
@@ -78,17 +71,16 @@ class TaskFactoryTest {
         assertEquals("Test Title", result.getTitle());
         assertEquals("Test Description", result.getDescription());
         assertEquals(reporter, result.getReporter());
-        assertEquals(1, result.getAssignees().size()); // Убеждаемся, что исполнитель добавился
+        assertEquals(1, result.getAssignees().size());
 
         verify(bugStrategy, times(1)).create(dto);
         verify(userRepository, times(1)).findAllById(dto.getAssigneeIds());
     }
 
-    @Test // НЕГАТИВНЫЙ (Передан неизвестный тип задачи)
+    @Test
     void createTask_Negative_UnknownTypeThrowsException() {
-        dto.setType("UNKNOWN_TYPE"); // Передаем плохой тип
+        dto.setType("UNKNOWN_TYPE");
 
-        // Наша единственная стратегия - BUG. Она не отзовется на UNKNOWN_TYPE.
         when(bugStrategy.getType()).thenReturn("BUG");
 
         IllegalTaskArgumentException exception = assertThrows(IllegalTaskArgumentException.class, () -> {
@@ -96,12 +88,12 @@ class TaskFactoryTest {
         });
 
         assertEquals("Unknown task's type UNKNOWN_TYPE", exception.getMessage());
-        verify(bugStrategy, never()).create(any()); // Стратегия не должна вызываться
+        verify(bugStrategy, never()).create(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 1 (Список исполнителей пуст, но не null)
+    @Test
     void createTask_Boundary_EmptyAssigneesList() {
-        dto.setAssigneeIds(Collections.emptyList()); // Передаем пустой список []
+        dto.setAssigneeIds(Collections.emptyList());
 
         when(bugStrategy.getType()).thenReturn("BUG");
         when(bugStrategy.create(dto)).thenReturn(mockTask);
@@ -109,16 +101,13 @@ class TaskFactoryTest {
         AbstractTask result = taskFactory.createTask(dto, reporter);
 
         assertNotNull(result);
-        assertTrue(result.getAssignees().isEmpty()); // Исполнителей быть не должно
-
-        // ВАЖНО: Проверяем, что мы не дергали базу данных вхолостую!
+        assertTrue(result.getAssignees().isEmpty());
         verify(userRepository, never()).findAllById(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 2 (Список исполнителей равен null)
+    @Test
     void createTask_Boundary_NullAssigneesList() {
-        dto.setAssigneeIds(null); // Передаем null
-
+        dto.setAssigneeIds(null);
         when(bugStrategy.getType()).thenReturn("BUG");
         when(bugStrategy.create(dto)).thenReturn(mockTask);
 
@@ -126,7 +115,6 @@ class TaskFactoryTest {
 
         assertNotNull(result);
 
-        // ВАЖНО: Проверяем, что фабрика не упала с NullPointerException
         verify(userRepository, never()).findAllById(any());
     }
 }

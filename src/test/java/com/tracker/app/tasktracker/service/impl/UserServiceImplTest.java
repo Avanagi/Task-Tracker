@@ -47,11 +47,7 @@ class UserServiceImplTest {
         responseDto = UserResponseDto.builder().id(1L).username("Ivan").email("ivan@test.com").build();
     }
 
-    // ==========================================
-    // 1. МЕТОД: createUser
-    // ==========================================
-
-    @Test // ПОЗИТИВНЫЙ
+    @Test
     void createUser_Positive_Success() {
         when(passwordEncoder.encode(anyString())).thenReturn("Encoded!");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
@@ -64,17 +60,16 @@ class UserServiceImplTest {
         verify(userRepository, times(1)).save(any(User.class));
     }
 
-    @Test // НЕГАТИВНЫЙ (Конфликт в БД - такой email или логин уже есть)
+    @Test
     void createUser_Negative_DatabaseConflictThrowsException() {
         when(passwordEncoder.encode(anyString())).thenReturn("Encoded!");
-        // Имитируем падение БД при попытке сохранить дубликат
         when(userRepository.save(any(User.class))).thenThrow(new DataIntegrityViolationException("Duplicate key"));
 
         assertThrows(DataIntegrityViolationException.class, () -> userService.createUser(createDto));
-        verify(userMapper, never()).toDto(any()); // Маппер не должен вызываться при ошибке БД
+        verify(userMapper, never()).toDto(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 1 (Максимально допустимая длина логина - 30 символов)
+    @Test
     void createUser_Boundary_MaxLengthUsername() {
         String maxUsername = "A".repeat(30);
         createDto.setUsername(maxUsername);
@@ -87,9 +82,9 @@ class UserServiceImplTest {
         verify(userRepository, times(1)).save(argThat(u -> u.getUsername().length() == 30));
     }
 
-    @Test // ГРАНИЧНЫЙ 2 (Сверхдлинный пароль на границе лимитов шифратора)
+    @Test
     void createUser_Boundary_MaxPasswordLength() {
-        String hugePassword = "P".repeat(128) + "1!"; // 130 символов
+        String hugePassword = "P".repeat(128) + "1!";
         createDto.setPassword(hugePassword);
 
         when(passwordEncoder.encode(hugePassword)).thenReturn("HugeEncodedString");
@@ -100,11 +95,7 @@ class UserServiceImplTest {
         verify(passwordEncoder, times(1)).encode(hugePassword);
     }
 
-    // ==========================================
-    // 2. МЕТОД: getUserByUsername
-    // ==========================================
-
-    @Test // ПОЗИТИВНЫЙ
+    @Test
     void getUserByUsername_Positive_UserFound() {
         when(userRepository.findByUsername("Ivan")).thenReturn(Optional.of(testUser));
         when(userMapper.toDto(testUser)).thenReturn(responseDto);
@@ -115,7 +106,7 @@ class UserServiceImplTest {
         verify(userMapper, times(1)).toDto(testUser);
     }
 
-    @Test // НЕГАТИВНЫЙ (Пользователь не найден)
+    @Test
     void getUserByUsername_Negative_UserNotFoundThrowsException() {
         when(userRepository.findByUsername("Ghost")).thenReturn(Optional.empty());
 
@@ -126,16 +117,15 @@ class UserServiceImplTest {
         verify(userMapper, never()).toDto(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 1 (Поиск по пустой строке)
+    @Test
     void getUserByUsername_Boundary_EmptyString() {
-        // Проверяем поведение сервиса, если контроллер почему-то пропустит пустую строку
         when(userRepository.findByUsername("")).thenReturn(Optional.empty());
 
         assertThrows(UserNotFoundException.class, () -> userService.getUserByUsername(""));
         verify(userRepository, times(1)).findByUsername("");
     }
 
-    @Test // ГРАНИЧНЫЙ 2 (Поиск строки с пробелами - граница тримминга)
+    @Test
     void getUserByUsername_Boundary_WhitespaceString() {
         when(userRepository.findByUsername("   ")).thenReturn(Optional.empty());
 
@@ -143,11 +133,7 @@ class UserServiceImplTest {
         verify(userRepository, times(1)).findByUsername("   ");
     }
 
-    // ==========================================
-    // 3. МЕТОД: getAllUsers
-    // ==========================================
-
-    @Test // ПОЗИТИВНЫЙ
+    @Test
     void getAllUsers_Positive_ReturnsMultipleUsers() {
         User user2 = User.builder().id(2L).username("Anna").build();
         UserResponseDto dto2 = UserResponseDto.builder().id(2L).username("Anna").build();
@@ -162,7 +148,7 @@ class UserServiceImplTest {
         assertEquals("Anna", result.get(1).getUsername());
     }
 
-    @Test // НЕГАТИВНЫЙ (Ошибка при доступе к БД)
+    @Test
     void getAllUsers_Negative_DatabaseFailure() {
         when(userRepository.findAll()).thenThrow(new RuntimeException("DB Connection failed"));
 
@@ -170,7 +156,7 @@ class UserServiceImplTest {
         verify(userMapper, never()).toDto(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 1 (Коллекция имеет ровно 0 элементов)
+    @Test
     void getAllUsers_Boundary_EmptyList() {
         when(userRepository.findAll()).thenReturn(Collections.emptyList());
 
@@ -181,7 +167,7 @@ class UserServiceImplTest {
         verify(userMapper, never()).toDto(any());
     }
 
-    @Test // ГРАНИЧНЫЙ 2 (Коллекция имеет ровно 1 элемент - переходная граница между пустотой и множеством)
+    @Test
     void getAllUsers_Boundary_SingleElementList() {
         when(userRepository.findAll()).thenReturn(List.of(testUser));
         when(userMapper.toDto(testUser)).thenReturn(responseDto);

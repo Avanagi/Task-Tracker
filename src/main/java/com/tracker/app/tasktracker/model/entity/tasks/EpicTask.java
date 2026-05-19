@@ -24,7 +24,7 @@ public class EpicTask extends AbstractTask {
     @NotEmpty(message = "Epic must have at least one subtask")
     @Size(max = 50, message = "Epic cannot have more than 50 subtasks")
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "epic_id")
+    @JoinColumn(name = "epic_id", nullable = false)
     @ToString.Exclude
     private List<Subtask> subtasks = new ArrayList<>();
 
